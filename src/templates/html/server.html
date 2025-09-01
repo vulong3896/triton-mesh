@@ -1,0 +1,164 @@
+{% extends 'main.html' %}
+
+{% block maincontent %}
+
+<main class="app-main">
+  <!--begin::App Content Header-->
+  <div class="app-content-header">
+    <!--begin::Container-->
+    <div class="container-fluid">
+      <!--begin::Row-->
+      <div class="row">
+        <div class="col-sm-6 col-md-6">
+          <h3 class="mb-0">Registered servers</h3>
+        </div>
+        <div class="col-sm-6 col-md-6">
+          <ol class="breadcrumb float-sm-end">
+            <!-- <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Registered servers</li> -->
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createServerModal">Create Server</button>
+          </ol>
+        </div>
+      </div>
+      <!--end::Row-->
+    </div>
+    <!--end::Container-->
+  </div>
+  <!--end::App Content Header-->
+  <!--begin::App Content-->
+  <div class="app-content">
+    <!--begin::Container-->
+    <div class="container-fluid">
+      <!--begin::Row-->
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th style="width: 10px">#</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>HTTP URL</th>
+            <th>GRPC URL</th>
+            <th>Metrics URL</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for server in servers %}
+          <tr class="align-middle">
+            <td>{{ forloop.counter }}.</td>
+            <td>{{ server.name }}</td>
+            <td>
+              <span class="badge 
+                    {% if server.type == 'GPU' %}text-bg-primary
+                    {% else %}text-bg-info{% endif %}">
+                {{ server.type }}
+              </span>
+            </td>
+            <td>
+              <a href="{{ server.http_url }}" target="_blank">{{ server.http_url }}</a>
+            </td>
+            <td>
+              <a href="grpc://{{ server.grpc_url }}" target="_blank">{{ server.grpc_url }}</a>
+            </td>
+            <td>
+              <a href="{{ server.metrics_url }}" target="_blank">{{ server.metrics_url }}</a>
+            </td>
+            <td>
+              <span class="badge 
+                    {% if server.status == 'HEALTHY' %}text-bg-success
+                    {% elif server.status == 'UNHEALTHY' %}text-bg-danger
+                    {% else %}text-bg-secondary{% endif %}">
+                {{ server.get_status_display|default:server.status }}
+              </span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-warning btn-icon btn-update-server" serverId="{{ server.id }}" title="Update">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-danger btn-icon btn-delete-server" serverId="{{ server.id }}" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center">No servers registered.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <!--end::Row-->
+    </div>
+    <!--end::Container-->
+  </div>
+  <!--end::App Content-->
+
+  <div class="modal fade" id="createServerModal" tabindex="-1" role="dialog" aria-labelledby="createServerModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createServerModalLabel">Register new Triton Server</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+          <form method="post" id="createServerForm" action="/orchestrator/server/">
+            {% csrf_token %}
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="id_name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="id_name" name="name" required>
+              </div>
+              <div class="mb-3">
+                <label for="id_type" class="form-label">Type</label>
+                <select class="form-select" id="id_type" name="type" required>
+                  <option value="GPU">GPU</option>
+                  <option value="CPU">CPU</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="id_http_url" class="form-label d-flex align-items-center gap-2 mb-0">
+                  HTTP URL <small class="form-text text-secondary mb-0 ms-2">e.g. http://IP:8000</small>
+                </label>
+                <input type="url" class="form-control" id="http_url" name="http_url" required
+                  pattern="https?://.+" 
+                  value="http://localhost:8000"
+                  title="Please enter a valid HTTP URL starting with http://ip:port or https://domain">
+              </div>
+              <div class="mb-3">
+                <label for="id_grpc_url" class="form-label d-flex align-items-center gap-2 mb-0">
+                  gRPC URL <small class="form-text text-secondary mb-0 ms-2">e.g. IP:8001</small>
+                </label>
+                <input type="url" class="form-control" id="grpc_url" name="grpc_url" required
+                  pattern=".+" 
+                  value="localhost:8001"
+                  title="Please enter a valid gRPC URL starting with ip:port">
+              </div>
+              <div class="mb-3">
+                <label for="id_metrics_url" class="form-label d-flex align-items-center gap-2 mb-0">
+                  Metrics URL <small class="form-text text-secondary mb-0 ms-2">e.g. http://IP:8002</small>
+                </label>
+                <input type="url" class="form-control" id="metrics_url" name="metrics_url" required
+                  pattern="https?://.+" 
+                  value="http://localhost:8002"
+                  title="Please enter a valid Metrics URL starting with http://ip:port or https://domain">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="saveServerBtn">Save</button>
+            </div>
+          </form>
+        </div>
+    </div>
+  </div>
+
+</main>
+
+{% endblock %}
+
+{% block js %}
+{% load static %}
+<script src="{% static 'server.js' %}"></script>
+{% endblock %}

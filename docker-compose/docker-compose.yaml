@@ -1,0 +1,37 @@
+x-s3-env: &s3_env
+  AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+services:
+  redis:
+    image: bitnami/redis:7.4
+    restart: always
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - 6379:6379
+
+  triton1:
+    image: nvcr.io/nvidia/tritonserver:23.10-py3
+    container_name: triton1
+    ports:
+      - "8001:8001"   # gRPC
+      - "8000:8000"   # HTTP
+      - "8002:8002"   # Metrics
+    environment:
+      <<: *s3_env
+    command: >
+      tritonserver --model-store=s3://${AWS_S3_ENDPOINT}/aiteam-mlops/model-repository/ --model-control-mode=explicit
+
+  # triton2:
+  #   image: nvcr.io/nvidia/tritonserver:23.10-py3
+  #   container_name: triton2
+  #   ports:
+  #     - "8101:8001"
+  #     - "8100:8000"
+  #     - "8102:8002"
+  #   environment:
+  #     <<: *s3_env
+  #   command: >
+  #     tritonserver --model-store=s3://${AWS_S3_ENDPOINT}/aiteam-mlops/model-repository/ --model-control-mode=explicit

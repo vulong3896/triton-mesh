@@ -1,0 +1,9 @@
+Django==5.2.5
+djangorestframework==3.16.1
+prometheus-client==0.22.1
+requests
+djangorestframework-simplejwt==5.5.1
+python-decouple
+celery==5.2.7
+tritonclient[all]
+redis==4.5.3
