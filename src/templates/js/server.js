@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         } else {
             // Submit the form via AJAX to stay on the current page and display errors or success notification
+            document.getElementById('loaddingAction').hidden = false;
             var formData = new FormData(form);
             var xhr = new XMLHttpRequest();
             xhr.open('POST', form.action, true);
@@ -40,6 +41,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     response = JSON.parse(xhr.responseText);
                 } catch (e) {}
+
+                // Unhide the loading spinner
 
                 // Create alert element
                 var alertDiv = document.createElement('div');
@@ -97,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Insert alert before modal footer
                 var modalBody = form.querySelector('.modal-body');
                 modalBody.parentNode.insertBefore(alertDiv, modalBody.nextSibling);
+                document.getElementById('loaddingAction').hidden = true;
             };
 
             xhr.onerror = function () {
@@ -106,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alertDiv.textContent = 'Network error. Please try again.';
                 var modalBody = form.querySelector('.modal-body');
                 modalBody.parentNode.insertBefore(alertDiv, modalBody.nextSibling);
+                document.getElementById('loaddingAction').hidden = true;
             };
 
             xhr.send(formData);
