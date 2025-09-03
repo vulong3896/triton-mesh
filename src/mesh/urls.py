@@ -16,11 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from orchestrator.views import server_view
+from orchestrator.views import server_view, model_view
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('orchestrator/', include('orchestrator.urls')),
     path('', server_view, name='server'),
+    path('model', model_view, name='model'),
 ]

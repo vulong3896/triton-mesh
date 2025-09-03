@@ -1,11 +1,12 @@
 import uuid
 from django.db import models
 from .constants import (
-    MODEL_LOADING, MODEL_READY, MODEL_ERROR,
+    INSTANCE_LOADING, INSTANCE_READY, INSTANCE_ERROR,
     SERVER_HEALTHY, SERVER_UNHEALTHY, SERVER_INIT, INSTANCE_INIT,
     BEST_FIT, LEAST_LOADED, BIGGEST_FREE_MEMORY,
     ROUND_ROBIN, LEAST_SERVING, RANDOM, WEIGHTED_ROUND_ROBIN,
     MODEL_DRAFT, MODEL_DEPLOYED, MODEL_ARCHIVED,
+    VERSION_UNLOADED, VERSION_DEPLOYED, VERSION_ARCHIVED,
     CPU, GPU
 )
 from django.core.validators import URLValidator
@@ -99,6 +100,11 @@ class Model(models.Model):
         return self.name
 
 class ModelVersion(models.Model):
+    STATUSES = [
+        (VERSION_UNLOADED, "UNLOADED"),
+        (VERSION_DEPLOYED, "DEPLOYED"),
+        (VERSION_ARCHIVED, "ARCHIVED")
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     model = models.ForeignKey(Model, on_delete=models.CASCADE, related_name='versions')
     name = models.IntegerField(default=1)
@@ -109,21 +115,21 @@ class ModelVersion(models.Model):
 
 class ModelInstance(models.Model):
     STATUS_CHOICES = [
-        (MODEL_LOADING, 'Loading'),
-        (MODEL_READY, 'Ready'),
-        (MODEL_ERROR, 'Error'),
+        (INSTANCE_LOADING, 'Loading'),
+        (INSTANCE_READY, 'Ready'),
+        (INSTANCE_ERROR, 'Error'),
         (INSTANCE_INIT, "Init")
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     model = models.ForeignKey(Model, on_delete=models.CASCADE, related_name='instances')
     version = models.ForeignKey(ModelVersion, on_delete=models.CASCADE, related_name='instances')
-    server = models.ForeignKey(TritonServer, on_delete=models.CASCADE, related_name='instances')
+    server = models.ForeignKey(TritonServer, on_delete=models.CASCADE, related_name='instances', null=True, blank=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=INSTANCE_INIT)
     loaded_at = models.DateTimeField(auto_now_add=True)
     error_message = models.TextField(null=True, blank=True)
 
-    class Meta:
-        unique_together = ('model', 'version', 'server')
+    # class Meta:
+    #     unique_together = ('model', 'version', 'server')
 
     def __str__(self):
         return f"Deployment of {self.model} on {self.node}"

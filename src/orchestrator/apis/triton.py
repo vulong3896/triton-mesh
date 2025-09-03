@@ -9,6 +9,7 @@ import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
 import requests
 from orchestrator.utils.validate import validate_http_url
+from rest_framework.decorators import action
 
 
 class TritonServerViewSet(viewsets.ViewSet):
@@ -66,7 +67,12 @@ class TritonServerViewSet(viewsets.ViewSet):
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = TritonServerSerializer(data=request.data)
+        if request.data.get('id', None):
+            server = get_object_or_404(TritonServer, pk=request.data['id'])
+            serializer = TritonServerSerializer(server, data=request.data, partial=False)
+        else:
+            serializer = TritonServerSerializer(data=request.data)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -78,17 +84,6 @@ class TritonServerViewSet(viewsets.ViewSet):
         """
         server = get_object_or_404(TritonServer, pk=pk)
         serializer = TritonServerSerializer(server, data=request.data, partial=False)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def partial_update(self, request, pk=None):
-        """
-        Partially update an existing Triton server.
-        """
-        server = get_object_or_404(TritonServer, pk=pk)
-        serializer = TritonServerSerializer(server, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

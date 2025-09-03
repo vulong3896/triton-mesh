@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
-    var saveBtn = document.getElementById('saveServerBtn');
-    var form = document.getElementById('createServerForm');
+    var saveBtn = document.getElementById('saveModelBtn');
+    var form = document.getElementById('createModelForm');
 
     saveBtn.addEventListener('click', function (e) {
         // Use HTML5 form validation
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     // Success
                     alertDiv.classList.add('alert-success');
-                    alertDiv.textContent = response.message || 'Server registered successfully!';
+                    alertDiv.textContent = response.message || 'Model registered successfully!';
                     // Optionally, reset the form
                     form.reset();
                     form.classList.remove('was-validated');
@@ -101,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 var modalBody = form.querySelector('.modal-body');
                 modalBody.parentNode.insertBefore(alertDiv, modalBody.nextSibling);
                 document.getElementById('loaddingAction').hidden = true;
-                // Reset all field values of the form
             };
 
             xhr.onerror = function () {
@@ -119,15 +118,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Add delete action to delete button
-    document.querySelectorAll('.btn-delete-server').forEach(function (btn) {
+    document.querySelectorAll('.btn-delete-model').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
-            var serverId = btn.getAttribute('serverId');
-            if (!serverId) return;
+            var modelId = btn.getAttribute('modelId');
+            if (!modelId) return;
 
             Swal.fire({
                 title: 'Are you sure?',
-                text: "Are you sure you want to delete this server?",
+                text: "Are you sure you want to delete this model?",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 // Continue with delete logic below
                 var xhr = new XMLHttpRequest();
-                xhr.open('DELETE', '/orchestrator/server/' + serverId + "/", true);
+                xhr.open('DELETE', '/orchestrator/model/' + modelId + "/", true);
                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                 // CSRF token for Django
                 var csrftoken = null;
@@ -168,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         try {
                             response = JSON.parse(xhr.responseText);
                         } catch (e) { }
-                        Swal.fire('Error', response.message || 'Failed to delete server.', 'error');
+                        Swal.fire('Error', response.message || 'Failed to delete model.', 'error');
                     }
                 };
 
@@ -183,15 +182,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Handle update server button click
-    document.querySelectorAll('.btn-update-server').forEach(function(btn) {
+    document.querySelectorAll('.btn-update-model').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var row = btn.closest('tr');
             if (!row) return;
-            var serverId = btn.getAttribute('serverId');
-
-            form.elements['id'].value = serverId;
+            var modelId = btn.getAttribute('modelId');
+            form.elements['id'].value = modelId;
             
-            var modal = document.getElementById('createServerModal');
+            var modal = document.getElementById('createModelModal');
 
             // Get values from the row's cells
             // Table columns: #, Name, Type, HTTP URL, GRPC URL, Metrics URL, Status, Action
@@ -205,27 +203,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeBadge) {
                 form.elements['type'].value = typeBadge.textContent.trim();
             }
-            // HTTP URL
-            var httpLink = cells[3].querySelector('a');
-            if (httpLink) {
-                form.elements['http_url'].value = httpLink.textContent.trim();
+            var numInstance = cells[3].querySelector('td');
+            if (numInstance) {
+                form.elements['instance_num'].value = numInstance.textContent.trim();
             }
-            // GRPC URL
-            var grpcLink = cells[4].querySelector('a');
-            if (grpcLink) {
-                // Remove "grpc://" prefix if present
-                var grpcUrl = grpcLink.textContent.trim();
-                form.elements['grpc_url'].value = grpcUrl;
+            var deployAlgorithm = cells[4].querySelector('span');
+            if (deployAlgorithm) {
+                form.elements['deploy_algorithm'].value = deployAlgorithm.getAttribute('value').trim();
             }
-            // Metrics URL
-            var metricsLink = cells[5].querySelector('a');
-            if (metricsLink) {
-                form.elements['metrics_url'].value = metricsLink.textContent.trim();
+            var routingAlgorithm = cells[5].querySelector('span');
+            if (routingAlgorithm) {
+                form.elements['routing_algorithm'].value = routingAlgorithm.getAttribute('value').trim();
             }
 
             // Show the modal (Bootstrap 4/5 compatible)
             if (typeof $ !== 'undefined' && typeof $.fn.modal === 'function') {
-                $('#createServerModal').modal('show');
+                $('#createModelModal').modal('show');
             } else if (modal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                 var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
                 bsModal.show();

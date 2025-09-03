@@ -60,6 +60,8 @@ def deploy_model(version_id):
     """
     version = ModelVersion.objects.get(id=version_id)
     model = version.model
+    model.status = MODEL_DEPLOYED
+    model.save(update_fields=['status'])
 
     # Select deployment strategy
     if model.deploy_algorithm == BEST_FIT:

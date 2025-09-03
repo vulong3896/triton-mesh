@@ -4,6 +4,9 @@ from rest_framework import permissions
 from django.shortcuts import get_object_or_404
 from orchestrator.models import ModelVersion
 from orchestrator.serializers import ModelVersionSerializer
+from rest_framework.decorators import action
+from orchestrator.tasks import deploy_model
+
 
 class ModelVersionViewSet(viewsets.ViewSet):
     permission_classes = []
@@ -25,6 +28,12 @@ class ModelVersionViewSet(viewsets.ViewSet):
         """
         version = get_object_or_404(ModelVersion, pk=pk)
         version.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def deploy(self, request, pk=None):
+        version = get_object_or_404(ModelVersion, pk=pk)
+        deploy_model.delay(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     

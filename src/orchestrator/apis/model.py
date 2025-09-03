@@ -9,7 +9,7 @@ from orchestrator.models import Model, ModelVersion
 from orchestrator.serializers import ModelSerializer, ModelVersionSerializer
 from django.shortcuts import get_object_or_404
 from orchestrator.constants import MODEL_ARCHIVED, MODEL_DEPLOYED, MODEL_DRAFT
-from orchestrator.errors import CANT_DELETE_NON_ARCHIVED_MODEL, MODEL_ALREADY_DEPLOYED
+from orchestrator.errors import CANT_DELETE_DEPLOYED_MODEL, MODEL_ALREADY_DEPLOYED
 
 
 class ModelViewSet(viewsets.ViewSet):
@@ -36,6 +36,12 @@ class ModelViewSet(viewsets.ViewSet):
         Create a new model.
         """
         serializer = ModelSerializer(data=request.data)
+        if request.data.get('id', None):
+            model = get_object_or_404(Model, pk=request.data['id'])
+            serializer = ModelSerializer(model, data=request.data, partial=False)
+        else:
+            serializer = ModelSerializer(data=request.data)
+            
         if serializer.is_valid():
             model = serializer.save()
             ModelVersion.objects.create(
@@ -60,10 +66,10 @@ class ModelViewSet(viewsets.ViewSet):
         Delete a model.
         """
         model = get_object_or_404(Model, pk=pk)
-        if model.status != MODEL_ARCHIVED:
+        if model.status == MODEL_DEPLOYED:
             response = {
-                'error_code': CANT_DELETE_NON_ARCHIVED_MODEL,
-                'message': 'Cant delete non archived model, archive it first!'
+                'error_code': CANT_DELETE_DEPLOYED_MODEL,
+                'message': 'Cant delete deployed model, archive it first!'
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
         model.delete()

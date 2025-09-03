@@ -13,10 +13,15 @@ def craw_server_metrics(self):
         check_health_url = f"{server.http_url}/v2/health/live"
         error_message = validate_http_url(check_health_url)
         update_fields = []
+        print(error_message)
         if error_message:
             server.status = SERVER_UNHEALTHY
             update_fields.append('status')
         else:
+            print(server.status, SERVER_HEALTHY)
+            if server.status != SERVER_HEALTHY:
+                server.status = SERVER_HEALTHY
+                update_fields.append('status')
             url = f"{server.metrics_url}/metrics" 
             txt = fetch_metrics_text(url)
             metrics = parse_metrics(txt)
