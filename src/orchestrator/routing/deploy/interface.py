@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
-
+from orchestrator.constants import SERVER_HEALTHY
 from orchestrator.models import Model, TritonServer
+
+import logging
+
+
+logger = logging.getLogger('mesh')
 
 class IDeployStrategy(ABC):
 
@@ -9,12 +14,17 @@ class IDeployStrategy(ABC):
         Initialize the deployment strategy by querying model info and available servers
         with the same tag as the model's tags.
         """
-        # Query the model instance
         self.model = Model.objects.get(id=model_id)
-        # Get all tags associated with the model
+        params = {'type': self.model.type, 'status': SERVER_HEALTHY}
         model_tags = self.model.tags.all()
-        # Query available servers that have at least one tag in common with the model's tags
-        self.candidate_servers = TritonServer.objects.filter(tags__in=model_tags, type=model.type).distinct()
+        if model_tags:
+            params['tags__in'] = model_tags
+        self.candidate_servers = TritonServer.objects.filter(**params).distinct()
+        
+        logger.debug(f"Candidate servers: {self.candidate_servers}")
+
+    def __str__(self):
+        return self.__class__.__name__
 
     @abstractmethod
     def select_servers(self, model, candidate_servers):

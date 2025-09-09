@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "orchestrator",
+    "authen",
     "celery"
 ]
 
@@ -61,7 +62,9 @@ ROOT_URLCONF = "mesh.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, 'templates/html')],
+        "DIRS": [
+            # os.path.join(BASE_DIR, 'templates/html')
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -74,8 +77,8 @@ TEMPLATES = [
 ]
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'templates/css'),
-    os.path.join(BASE_DIR, 'templates/js'),
+    # os.path.join(BASE_DIR, 'templates/css'),
+    # os.path.join(BASE_DIR, 'templates/js'),
 ]
 
 WSGI_APPLICATION = "mesh.wsgi.application"
@@ -143,6 +146,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
 }
 
 SIMPLE_JWT = {
@@ -173,16 +178,64 @@ SIMPLE_JWT = {
 
 from celery.schedules import crontab
 
-CELERY_REDIS_URL = config('REDIS_URL', default=None)
-if not CELERY_REDIS_URL:
-    raise ValueError('REDIS_URL not found!')
+REDIS_URL = config('REDIS_URL', default=None)
+if not REDIS_URL:
+    raise ValueError('Env REDIS_URL is not set!')
+RBMQ_URL = config('RBMQ_URL', default=None)
+if not RBMQ_URL:
+    raise ValueError('RBMQ_URL is not set!')
 
-CELERY_BROKER_URL = CELERY_REDIS_URL
-CELERY_RESULT_BACKEND = CELERY_REDIS_URL
+CELERY_BROKER_URL = RBMQ_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 
 CELERY_BEAT_SCHEDULE = {
-    'craw-server-metrics-every-5-minutes': {
+    'craw-server-metrics': {
         'task': 'orchestrator.tasks.server_metrics.craw_server_metrics',
         'schedule': crontab(minute='*/1'),
+        'options': {'priority': 10},
+    },
+    'assign-servers-to-unassigned-instances': {
+        'task': 'orchestrator.tasks.cron.assign_servers_to_unassigned_instances',
+        'schedule': crontab(minute='*/1'),
+    },
+    'check-all-instance-readiness': {
+        'task': 'orchestrator.tasks.model_metrics.check_all_instance_readiness',
+        'schedule': crontab(minute='*/1'),
+        'options': {'priority': 8},
+    },
+    'reload-errored-instances': {
+        'task': 'orchestrator.tasks.cron.reload_errored_instances',
+        'schedule': crontab(minute='*/1'),
+    },
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "mesh": {
+            "handlers": ["console"],
+            "level": config("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
     },
 }

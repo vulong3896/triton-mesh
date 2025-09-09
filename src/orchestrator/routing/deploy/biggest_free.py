@@ -7,7 +7,7 @@ class BiggestFreeMemoryStrategy(IDeployStrategy):
     BestFitStrategy selects servers for deployment based on the "best fit" criteria.
     For demonstration, this implementation selects servers with the most available GPU memory.
     """
-
+    
     def select_servers(self):
         """
         Select servers for deploying the given model using the best fit strategy.

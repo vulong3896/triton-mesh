@@ -7,14 +7,12 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mesh.settings')
 django.setup()
 
-# from orchestrator.tasks.server_metrics import craw_server_metrics
-
-# Set the default Django settings module for the 'celery' program.
-
 app = Celery('mesh')
 
 app.conf.task_queues = (
-    Queue('default', routing_key='default'),
+    Queue('default', routing_key='default', max_priority=6),
+    Queue('instance', routing_key='instance', max_priority=8),
+    Queue('server', routing_key='server', max_priority=10),
 )
 app.conf.task_default_queue = 'default'
 app.conf.task_default_exchange = 'default'
@@ -31,8 +29,9 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
-# app.conf.task_routes = {
-#     'craw_server_metrics': {'queue': 'default'},
-# }
+app.conf.task_routes = {
+    'orchestrator.tasks.server_metrics.craw_server_metrics': {'queue': 'server'},
+    'orchestrator.tasks.model_metrics.check_all_instance_readiness': {'queue': 'instance'},
+}
 
 

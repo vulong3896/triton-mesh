@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Model, TritonServer, ModelVersion
+from .models import Model, TritonServer
 
 
 class ModelSerializer(serializers.ModelSerializer):
@@ -30,14 +30,5 @@ class TritonServerSerializer(serializers.ModelSerializer):
             'total_gpu_memory_mb', 'total_used_gpu_memory_mb',
             'total_cpu_memory_mb', 'total_used_cpu_memory_mb',
             'created_at', 'last_update', 'metadata', 'tags'
-        ]
-        read_only_fields = ['created_at', 'last_update']
-
-class ModelVersionSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ModelVersion  # Assuming ModelVersion is a related model or inner class
-        fields = [
-            'id', 'model', 'name', 'created_at',
         ]
         read_only_fields = ['created_at', 'last_update']

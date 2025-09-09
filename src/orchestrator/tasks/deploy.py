@@ -1,15 +1,18 @@
 from celery import shared_task
-from orchestrator.models import Model, ModelVersion, ModelInstance, TritonServer
+from orchestrator.models import Model, ModelInstance, TritonServer
 from orchestrator.constants import (
     BEST_FIT, LEAST_LOADED, BIGGEST_FREE_MEMORY, 
-    MODEL_LOADING, MODEL_READY, MODEL_ERROR
+    INSTANCE_LOADING, INSTANCE_READY, INSTANCE_ERROR,
+    MODEL_DEPLOYED
 )
-from orchestrator.routing.deploy.best_fit import BestFitStrategy
-from orchestrator.routing.deploy.least_loaded import LeastLoadedStrategy
-from orchestrator.routing.deploy.biggest_free import BiggestFreeMemoryStrategy
-
+from orchestrator.routing.deploy import (
+    BestFitStrategy, 
+    LeastLoadedStrategy, 
+    BiggestFreeMemoryStrategy
+)
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
+
 
 @shared_task
 def load_instance(instance_id):
@@ -23,43 +26,42 @@ def load_instance(instance_id):
     server = instance.server
 
     # Set status to LOADING
-    instance.status = MODEL_LOADING
+    instance.status = INSTANCE_LOADING
     instance.save(update_fields=['status'])
 
     # Use Triton gRPC client to load the model
     triton_url = server.grpc_url 
     model_name = model.name
-    model_version = version.name
+    model_version = int(version.name)
 
     try:
         with grpcclient.InferenceServerClient(url=triton_url) as client:
             # Load the model (Triton will load the latest version if version is not specified)
-            client.load_model(model_name=model_name, model_version=model_version)
+            client.load_model(model_name=model_name)
             # Optionally, you can check if the model is ready
             is_ready = client.is_model_ready(model_name, model_version=model_version)
             if is_ready:
-                instance.status = MODEL_READY
+                instance.status = INSTANCE_READY
                 instance.error_message = None
             else:
-                instance.status = MODEL_ERROR
+                instance.status = INSTANCE_ERROR
                 instance.error_message = f"Model {model_name} not ready after load."
     except InferenceServerException as e:
-        instance.status = MODEL_ERROR
+        instance.status = INSTANCE_ERROR
         instance.error_message = str(e)
     except Exception as e:
-        instance.status = MODEL_ERROR
+        instance.status = INSTANCE_ERROR
         instance.error_message = f"Unexpected error: {str(e)}"
 
     instance.save()
 
 
 @shared_task
-def deploy_model(version_id):
+def deploy_model(model_id):
     """
     Deploys a model version to selected servers based on the model's deployment strategy.
     """
-    version = ModelVersion.objects.get(id=version_id)
-    model = version.model
+    model = Model.objects.get(id=model_id)
     model.status = MODEL_DEPLOYED
     model.save(update_fields=['status'])
 
@@ -78,15 +80,14 @@ def deploy_model(version_id):
     selected_servers = strategy.select_servers()
 
     # Deploy model version to selected servers
-    for server in selected_servers:
-        # Check if already deployed
-        exists = ModelInstance.objects.filter(
-            model=model, version=version, server=server
-        ).exists()
-        if not exists:
-            instance = ModelInstance.objects.create(
-                model=model,
-                version=version,
-                server=server
-            )
+    for i in range(model.instance_num):
+        if i < len(selected_servers):
+            server = selected_servers[i]
+        else:
+            server = None
+        instance = ModelInstance.objects.create(
+            model=model,
+            server=server
+        )
+        if server:
             load_instance.delay(instance.id)

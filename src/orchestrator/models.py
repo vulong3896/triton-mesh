@@ -6,7 +6,7 @@ from .constants import (
     BEST_FIT, LEAST_LOADED, BIGGEST_FREE_MEMORY,
     ROUND_ROBIN, LEAST_SERVING, RANDOM, WEIGHTED_ROUND_ROBIN,
     MODEL_DRAFT, MODEL_DEPLOYED, MODEL_ARCHIVED,
-    VERSION_UNLOADED, VERSION_DEPLOYED, VERSION_ARCHIVED,
+    VERSION_NOT_LOADED, VERSION_DEPLOYED, VERSION_ARCHIVED,
     CPU, GPU
 )
 from django.core.validators import URLValidator
@@ -99,20 +99,6 @@ class Model(models.Model):
     def __str__(self):
         return self.name
 
-class ModelVersion(models.Model):
-    STATUSES = [
-        (VERSION_UNLOADED, "UNLOADED"),
-        (VERSION_DEPLOYED, "DEPLOYED"),
-        (VERSION_ARCHIVED, "ARCHIVED")
-    ]
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    model = models.ForeignKey(Model, on_delete=models.CASCADE, related_name='versions')
-    name = models.IntegerField(default=1)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.model.name} v{self.name}"
-
 class ModelInstance(models.Model):
     STATUS_CHOICES = [
         (INSTANCE_LOADING, 'Loading'),
@@ -122,7 +108,6 @@ class ModelInstance(models.Model):
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     model = models.ForeignKey(Model, on_delete=models.CASCADE, related_name='instances')
-    version = models.ForeignKey(ModelVersion, on_delete=models.CASCADE, related_name='instances')
     server = models.ForeignKey(TritonServer, on_delete=models.CASCADE, related_name='instances', null=True, blank=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=INSTANCE_INIT)
     loaded_at = models.DateTimeField(auto_now_add=True)
@@ -132,7 +117,7 @@ class ModelInstance(models.Model):
     #     unique_together = ('model', 'version', 'server')
 
     def __str__(self):
-        return f"Deployment of {self.model} on {self.node}"
+        return f"Deployment of {self.model} on {self.server}"
 
 class ModelMetric(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

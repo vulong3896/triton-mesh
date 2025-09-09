@@ -5,23 +5,28 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from orchestrator.models import Model, ModelVersion
-from orchestrator.serializers import ModelSerializer, ModelVersionSerializer
+from orchestrator.models import Model
+from orchestrator.serializers import ModelSerializer
 from django.shortcuts import get_object_or_404
 from orchestrator.constants import MODEL_ARCHIVED, MODEL_DEPLOYED, MODEL_DRAFT
 from orchestrator.errors import CANT_DELETE_DEPLOYED_MODEL, MODEL_ALREADY_DEPLOYED
+from orchestrator.tasks import deploy_model, unload_model
 
 
-class ModelViewSet(viewsets.ViewSet):
+class ModelViewSet(viewsets.ModelViewSet):
     permission_classes = []
 
     def list(self, request):
         """
-        List all models.
+        List all models with pagination, allowing page size from request.
         """
-        models = Model.objects.all()
-        serializer = ModelSerializer(models, many=True)
-        return Response(serializer.data)
+        queryset = Model.objects.all()
+        page_size = request.query_params.get('page_size')
+        if page_size:
+            self.pagination_class.page_size = int(page_size)
+        page = self.paginate_queryset(queryset)
+        serializer = ModelSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk=None):
         """
@@ -44,9 +49,6 @@ class ModelViewSet(viewsets.ViewSet):
             
         if serializer.is_valid():
             model = serializer.save()
-            ModelVersion.objects.create(
-                model=model
-            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -75,20 +77,14 @@ class ModelViewSet(viewsets.ViewSet):
         model.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['get'])
-    def versions(self, request, pk=None):
+    @action(detail=True, methods=['post'])
+    def deploy(self, request, pk=None):
         model = get_object_or_404(Model, pk=pk)
-        versions = ModelVersion.objects.filter(model=model)
-        serializer = ModelVersionSerializer(versions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        deploy_model.delay(pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
-    def version(self, request, pk=None):
-        """
-        Add a new version to the model.
-        """
-        serializer = ModelVersionSerializer(data=request.data)
-        if serializer.is_valid():
-            version = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def unload(self, request, pk=None):
+        model = get_object_or_404(Model, pk=pk)
+        unload_model.delay(pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)

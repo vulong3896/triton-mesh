@@ -12,16 +12,20 @@ from orchestrator.utils.validate import validate_http_url
 from rest_framework.decorators import action
 
 
-class TritonServerViewSet(viewsets.ViewSet):
+class TritonServerViewSet(viewsets.ModelViewSet):
     permission_classes = []
 
     def list(self, request):
         """
         List all Triton servers.
         """
-        servers = TritonServer.objects.all()
-        serializer = TritonServerSerializer(servers, many=True)
-        return Response(serializer.data)
+        queryset = TritonServer.objects.all()
+        page_size = request.query_params.get('page_size')
+        if page_size:
+            self.pagination_class.page_size = int(page_size)
+        page = self.paginate_queryset(queryset)
+        serializer = TritonServerSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk=None):
         """

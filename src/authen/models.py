@@ -1,6 +1,6 @@
 from django.db import models
 import uuid
-from orchestrator.models import Tag, Model, ModelVersion
+from orchestrator.models import Tag, Model
 
 # Create your models here.
 class User(models.Model):
@@ -24,7 +24,6 @@ class RBACAccessToken(models.Model):
 
     tags = models.ManyToManyField(Tag, related_name='tokens', blank=True)
     ai_models = models.ManyToManyField(Model, related_name='tokens', blank=True)
-    versions = models.ManyToManyField(ModelVersion, related_name='tokens', blank=True)
 
     def __str__(self):
         return f"Token {self.token_name} for {self.user.username} (expires {self.expires_at})"
