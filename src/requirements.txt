@@ -8,3 +8,4 @@ celery==5.2.7
 redis
 kombu
 tritonclient[all]
+psycopg2-binary

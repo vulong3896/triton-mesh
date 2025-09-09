@@ -14,6 +14,7 @@ services:
 
   rabbit:
     image: "rabbitmq:management-alpine"
+    restart: always
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-tritonmesh}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-Sup3rSecret}
@@ -22,6 +23,19 @@ services:
       - 5672:5672
     volumes:
       - rabbitmq_volume:/var/lib/rabbitmq
+
+  postgres:
+    image: postgres:15-bullseye
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tritonmesh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Sup3rSecret}
+      POSTGRES_DB: ${POSTGRES_DB:-meshdb}
+      PGDATA: /data/postgres
+    volumes:
+      - pg_volume:/data/postgres
+    ports:
+      - "5432:5432"
 
   triton1:
     image: nvcr.io/nvidia/tritonserver:23.10-py3
@@ -49,3 +63,4 @@ services:
 
 volumes:
   rabbitmq_volume:
+  pg_volume:
