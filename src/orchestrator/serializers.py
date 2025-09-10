@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Model, TritonServer
+from .models import Model, TritonServer, ModelInstance
 
 
 class ModelSerializer(serializers.ModelSerializer):
@@ -32,3 +32,37 @@ class TritonServerSerializer(serializers.ModelSerializer):
             'created_at', 'last_update', 'metadata', 'tags'
         ]
         read_only_fields = ['created_at', 'last_update']
+
+class ModelInstanceFromTritonViewSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    model_id = serializers.UUIDField(source='model.id', read_only=True)
+    model_name = serializers.CharField(source='model.name', read_only=True)
+
+    class Meta:
+        model = ModelInstance
+        fields = [
+            'id',
+            'model_id',
+            'model_name',
+            'status', 'status_display',
+            'error_message',
+            'loaded_at'
+        ]
+        read_only_fields = ['loaded_at', 'error_message', 'model_id', 'model_name']
+
+class ModelInstanceFromModelViewSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    server_id = serializers.UUIDField(source='server.id', read_only=True)
+    server_name = serializers.CharField(source='server.name', read_only=True)
+
+    class Meta:
+        model = ModelInstance
+        fields = [
+            'id',
+            'server_id',
+            'server_name',
+            'status', 'status_display',
+            'error_message',
+            'loaded_at'
+        ]
+        read_only_fields = ['loaded_at', 'error_message', 'server_id', 'server_name']

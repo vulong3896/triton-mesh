@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework import permissions
-from orchestrator.models import TritonServer
-from orchestrator.serializers import TritonServerSerializer
+from orchestrator.models import TritonServer, ModelInstance
+from orchestrator.serializers import TritonServerSerializer, ModelInstanceFromTritonViewSerializer
 from django.shortcuts import get_object_or_404
 from orchestrator.errors import TRITON_METRICS_URL_NOT_VALID, TRITON_HTTP_URL_NOT_VALID, TRITON_GRPC_URL_NOT_VALID
 import tritonclient.grpc as grpcclient
@@ -100,3 +100,13 @@ class TritonServerViewSet(viewsets.ModelViewSet):
         server = get_object_or_404(TritonServer, pk=pk)
         server.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get'])
+    def instances(self, request, pk=None):
+        queryset = ModelInstance.objects.filter(server_id=pk)
+        page_size = request.query_params.get('page_size')
+        if page_size:
+            self.pagination_class.page_size = int(page_size)
+        page = self.paginate_queryset(queryset)
+        serializer = ModelInstanceFromTritonViewSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)

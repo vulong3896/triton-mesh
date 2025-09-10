@@ -4,6 +4,8 @@ from utils.registry import BackendRegistry
 from collections import namedtuple
 from grpc_interceptor import ServerInterceptor
 from grpc_interceptor.exceptions import GrpcException
+from typing import Callable, Any
+
 
 
 class GRPCMeshInterceptor(ServerInterceptor):
@@ -24,15 +26,21 @@ class GRPCMeshInterceptor(ServerInterceptor):
             return self._channel_cache[address]
         chan = grpc.insecure_channel(address, options=self.channel_options)
         stub = self.stub_class(chan)
-        self._channel_cache[address] = (chan, stub)
+        self._channel_cache[address] = stub
         return stub
 
-    def intercept(self, method, request, context, method_name):
+    def intercept(
+        self,
+        method: Callable,
+        request_or_iterator: Any,
+        context: grpc.ServicerContext,
+        method_name: str,
+    ):
         if method_name == '/inference.GRPCInferenceService/ModelInfer':
-            model_name = request.model_name
+            model_name = request_or_iterator.model_name
             address = self.registry.pick_backend(model_name)
             stub = self._make_channel_and_stub(address)
-            response = stub.ModelInfer(request)
+            response = stub.ModelInfer(request_or_iterator)
             return response
         else:
-            return method(request, context)
+            return method(request_or_iterator, context)
