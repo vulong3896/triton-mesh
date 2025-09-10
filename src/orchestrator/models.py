@@ -47,6 +47,7 @@ class TritonServer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_update = models.DateTimeField(auto_now=True)
     metadata = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
 
     tags = models.ManyToManyField('Tag', related_name='servers', blank=True)
 

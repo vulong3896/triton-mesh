@@ -3,3 +3,4 @@ db.sqlite3
 run.sh
 celerybeat*
 *.pyc
+*_pb2*

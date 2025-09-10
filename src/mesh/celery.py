@@ -11,8 +11,7 @@ app = Celery('mesh')
 
 app.conf.task_queues = (
     Queue('default', routing_key='default', max_priority=6),
-    Queue('instance', routing_key='instance', max_priority=8),
-    Queue('server', routing_key='server', max_priority=10),
+    Queue('cron', routing_key='cron', max_priority=10),
 )
 app.conf.task_default_queue = 'default'
 app.conf.task_default_exchange = 'default'
@@ -30,8 +29,9 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 app.conf.task_routes = {
-    'orchestrator.tasks.server_metrics.craw_server_metrics': {'queue': 'server'},
-    'orchestrator.tasks.model_metrics.check_all_instance_readiness': {'queue': 'instance'},
+    'orchestrator.tasks.server_metrics.craw_server_metrics': {'queue': 'cron'},
+    'orchestrator.tasks.model_metrics.check_all_instance_readiness': {'queue': 'cron'},
+    'orchestrator.tasks.cron.update_registry': {'queue': 'cron'},
 }
 
 

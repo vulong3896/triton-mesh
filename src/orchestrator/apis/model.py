@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from orchestrator.models import Model
+from orchestrator.models import Model, ModelInstance
 from orchestrator.serializers import ModelSerializer
 from django.shortcuts import get_object_or_404
 from orchestrator.constants import MODEL_ARCHIVED, MODEL_DEPLOYED, MODEL_DRAFT
@@ -75,6 +75,14 @@ class ModelViewSet(viewsets.ModelViewSet):
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
         model.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        model = get_object_or_404(Model, pk=pk)
+        model.status = MODEL_ARCHIVED
+        model.save(update_fields=['status'])
+        unload_model.delay(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])

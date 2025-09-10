@@ -5,6 +5,11 @@ from orchestrator.utils.validate import validate_http_url
 from orchestrator.constants import SERVER_UNHEALTHY, SERVER_HEALTHY
 from .base import BaseTask
 
+import logging
+
+
+logger = logging.getLogger('mesh')
+
 @shared_task(bind=True, base=BaseTask)
 def craw_server_metrics(self):
     servers = TritonServer.objects.all()
@@ -13,15 +18,16 @@ def craw_server_metrics(self):
         check_health_url = f"{server.http_url}/v2/health/live"
         error_message = validate_http_url(check_health_url)
         update_fields = []
-        print(error_message)
         if error_message:
             server.status = SERVER_UNHEALTHY
-            update_fields.append('status')
+            server.error_message = error_message
+            update_fields.extend(['status', 'error_message'])
         else:
-            print(server.status, SERVER_HEALTHY)
             if server.status != SERVER_HEALTHY:
                 server.status = SERVER_HEALTHY
-                update_fields.append('status')
+                server.error_message = None
+                update_fields.extend(['status', 'error_message'])
+
             url = f"{server.metrics_url}/metrics" 
             txt = fetch_metrics_text(url)
             metrics = parse_metrics(txt)

@@ -9,3 +9,6 @@ redis
 kombu
 tritonclient[all]
 psycopg2-binary
+grpcio
+grpcio-tools
+grpc-interceptor

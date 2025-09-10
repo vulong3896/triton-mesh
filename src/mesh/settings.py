@@ -181,6 +181,7 @@ SIMPLE_JWT = {
 }
 
 from celery.schedules import crontab
+from datetime import timedelta
 
 REDIS_URL = config('REDIS_URL', default=None)
 if not REDIS_URL:
@@ -190,25 +191,30 @@ if not RBMQ_URL:
     raise ValueError('RBMQ_URL is not set!')
 
 CELERY_BROKER_URL = RBMQ_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL + '/0'
 
 CELERY_BEAT_SCHEDULE = {
     'craw-server-metrics': {
         'task': 'orchestrator.tasks.server_metrics.craw_server_metrics',
-        'schedule': crontab(minute='*/1'),
+        'schedule': timedelta(seconds=10),
         'options': {'priority': 10},
+    },
+    'check-all-instance-readiness': {
+        'task': 'orchestrator.tasks.model_metrics.check_all_instance_readiness',
+        'schedule': timedelta(seconds=10),
+        'options': {'priority': 9},
+    },
+    'update-registry': {
+        'task': 'orchestrator.tasks.cron.update_registry',
+        'schedule': timedelta(seconds=10),
+        'options': {'priority': 8},
     },
     'assign-servers-to-unassigned-instances': {
         'task': 'orchestrator.tasks.cron.assign_servers_to_unassigned_instances',
         'schedule': crontab(minute='*/1'),
     },
-    'check-all-instance-readiness': {
-        'task': 'orchestrator.tasks.model_metrics.check_all_instance_readiness',
-        'schedule': crontab(minute='*/1'),
-        'options': {'priority': 8},
-    },
-    'reload-errored-instances': {
-        'task': 'orchestrator.tasks.cron.reload_errored_instances',
+    'reload-notloaed-instances': {
+        'task': 'orchestrator.tasks.cron.reload_notloaed_instances',
         'schedule': crontab(minute='*/1'),
     },
 }

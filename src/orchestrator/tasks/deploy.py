@@ -5,7 +5,7 @@ from orchestrator.constants import (
     INSTANCE_LOADING, INSTANCE_READY, INSTANCE_ERROR,
     MODEL_DEPLOYED
 )
-from orchestrator.routing.deploy import (
+from orchestrator.deploying import (
     BestFitStrategy, 
     LeastLoadedStrategy, 
     BiggestFreeMemoryStrategy
@@ -22,7 +22,6 @@ def load_instance(instance_id):
     """
     instance = ModelInstance.objects.get(id=instance_id)
     model = instance.model
-    version = instance.version
     server = instance.server
 
     # Set status to LOADING
@@ -32,14 +31,11 @@ def load_instance(instance_id):
     # Use Triton gRPC client to load the model
     triton_url = server.grpc_url 
     model_name = model.name
-    model_version = int(version.name)
 
     try:
         with grpcclient.InferenceServerClient(url=triton_url) as client:
-            # Load the model (Triton will load the latest version if version is not specified)
             client.load_model(model_name=model_name)
-            # Optionally, you can check if the model is ready
-            is_ready = client.is_model_ready(model_name, model_version=model_version)
+            is_ready = client.is_model_ready(model_name)
             if is_ready:
                 instance.status = INSTANCE_READY
                 instance.error_message = None
@@ -59,7 +55,7 @@ def load_instance(instance_id):
 @shared_task
 def deploy_model(model_id):
     """
-    Deploys a model version to selected servers based on the model's deployment strategy.
+    Deploys a model to selected servers based on the model's deployment strategy.
     """
     model = Model.objects.get(id=model_id)
     model.status = MODEL_DEPLOYED
@@ -79,7 +75,6 @@ def deploy_model(model_id):
     # Select servers for deployment
     selected_servers = strategy.select_servers()
 
-    # Deploy model version to selected servers
     for i in range(model.instance_num):
         if i < len(selected_servers):
             server = selected_servers[i]

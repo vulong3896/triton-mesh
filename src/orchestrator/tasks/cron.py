@@ -1,7 +1,7 @@
 from celery import shared_task
 from orchestrator.models import ModelInstance, Model
 from orchestrator.tasks.deploy import load_instance
-from orchestrator.routing.deploy import (
+from orchestrator.deploying import (
     BestFitStrategy, 
     LeastLoadedStrategy, 
     BiggestFreeMemoryStrategy
@@ -12,6 +12,7 @@ from orchestrator.constants import (
 )
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
+from utils.registry import BackendRegistry
 import logging
 
 
@@ -46,28 +47,26 @@ def assign_servers_to_unassigned_instances():
             load_instance.delay(instance.id)
 
 @shared_task
-def reload_errored_instances():
+def reload_notloaed_instances():
     """
     Periodic task to reload all model instances that are in MODEL_ERROR status.
     """
-    errored_instances = ModelInstance.objects.filter(status=INSTANCE_ERROR)
+    errored_instances = ModelInstance.objects.filter(status__in=[INSTANCE_ERROR, INSTANCE_INIT])
     for instance in errored_instances:
         server = instance.server
         model = instance.model
-        version = instance.version
         if not server:
             continue  # Can't reload if no server assigned
 
         triton_url = server.grpc_url
         model_name = model.name
-        model_version = str(version.name)
 
         try:
             with grpcclient.InferenceServerClient(url=triton_url) as client:
                 # Check if server is live/ready
                 if client.is_server_live() and client.is_server_ready():
                     # Check if model is ready
-                    is_ready = client.is_model_ready(model_name, model_version=model_version)
+                    is_ready = client.is_model_ready(model_name)
                     if is_ready:
                         instance.status = INSTANCE_READY
                         instance.error_message = None
@@ -104,3 +103,16 @@ def reload_errored_instances():
         except Exception as e:
             instance.error_message = f"Unexpected error: {str(e)}"
             instance.save(update_fields=["error_message"])
+
+@shared_task
+def update_registry():
+    grpc_registry = BackendRegistry('grpc')
+    http_registry = BackendRegistry('http')
+    instances = ModelInstance.objects.all()
+    for instance in instances:
+        if instance.status == INSTANCE_READY:
+            grpc_registry.add_backend(instance.model.name, instance.server.grpc_url)
+            http_registry.add_backend(instance.model.name, instance.server.http_url)
+        else:
+            grpc_registry.remove_backend(instance.model.name, instance.server.grpc_url)
+            http_registry.remove_backend(instance.model.name, instance.server.http_url)

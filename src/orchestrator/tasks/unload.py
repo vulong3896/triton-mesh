@@ -17,22 +17,20 @@ def unload_instance(instance_id):
         model = instance.model
 
         if not server:
-            instance.status = INSTANCE_ERROR
-            instance.error_message = "No server assigned to this instance."
-            instance.save(update_fields=["status", "error_message"])
+            instance.status = INSTANCE_INIT
+            instance.save(update_fields=["status"])
             return
 
         with grpcclient.InferenceServerClient(url=server.grpc_url) as client:
             model_name = model.name
-
+            instance.status = INSTANCE_INIT
+            instance.server = None 
             try:
                 client.unload_model(model_name)
-                instance.status = INSTANCE_INIT
                 instance.error_message = None
             except Exception as e:
-                instance.status = INSTANCE_ERROR
                 instance.error_message = f"Failed to unload: {str(e)}"
-            instance.save(update_fields=["status", "error_message"])
+            instance.save(update_fields=["status", "error_message", "server"])
     except ModelInstance.DoesNotExist:
         pass
 
